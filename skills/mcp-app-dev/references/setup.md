@@ -1,6 +1,6 @@
 # Set up the dev kit
 
-The **PMC App Dev Kit** is a skybridge-based repo you build the app inside. You either already have it (this skill
+The **MCP App Dev Kit** is a skybridge-based repo you build the app inside. You either already have it (this skill
 ships with it) or clone it.
 
 ## 1. Get the kit
@@ -21,7 +21,7 @@ view HMR), so edits apply live.
 
 ## 3. The layout you'll edit
 ```
-pmc-app-devkit/
+mcp-app-devkit/
 ├── src/
 │   ├── server.ts          # the MCP server — register your tools here
 │   ├── store.ts           # getStore() — DO SQL persistence (see persistence.md). Usually you edit the schema/queries.

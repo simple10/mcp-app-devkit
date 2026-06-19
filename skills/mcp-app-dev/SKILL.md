@@ -1,17 +1,17 @@
 ---
-name: pmc-app-dev
+name: mcp-app-dev
 description: |
-  Build and iterate on MCP apps (tools + custom UI views) for Portkey Mission Control, using the local PMC App
-  Dev Kit. Covers the full local loop: brainstorm against UX guidelines, scaffold tools/views in the dev kit,
-  persist data in a local Durable Object (DO SQL), run the dev server, expose it with ngrok, connect it to Claude
-  Desktop / ChatGPT as an MCP connector, and iterate. Use when a user wants to create, prototype, or update a PMC
-  app / MCP app with a UI.
+  Build and iterate on MCP apps with custom UI views (user-generated apps) using the local MCP App Dev Kit.
+  Covers the full local loop: brainstorm against UX guidelines, scaffold tools + views in the dev kit, persist
+  data in a local Durable Object (DO SQL), run the dev server, expose it with ngrok, connect it to Claude Desktop
+  / ChatGPT as an MCP connector, and iterate — then deploy to Portkey Mission Control (PMC). Use when a user wants
+  to create, prototype, or update an MCP app that has a UI.
 ---
 
 # Building MCP Apps for Portkey Mission Control
 
 These are conversational experiences that extend an AI assistant through **tools** + custom **UI views**, built as
-an MCP server. You prototype them locally in the **PMC App Dev Kit** (a skybridge-based dev server) and test them
+an MCP server. You prototype them locally in the **MCP App Dev Kit** (a skybridge-based dev server) and test them
 live in Claude Desktop over an ngrok tunnel. Later they deploy to PMC, where any agent (Claude, ChatGPT) can use
 them — but **this skill is the local build/prototype loop**.
 

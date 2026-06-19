@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getStore } from "./store.js";
 
 /**
- * PMC App Dev Kit — example "Tasks" app.
+ * MCP App Dev Kit — example "Tasks" app.
  *
  * A plain MCP app (no shell wrapping): tools are served directly, one view-bearing tool (`show_tasks`)
  * renders the list; mutations (`add_task`/`toggle_task`/`delete_task`) are non-view tools the view calls

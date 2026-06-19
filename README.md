@@ -1,4 +1,4 @@
-# PMC App Dev Kit
+# MCP App Dev Kit
 
 Build & prototype **MCP apps (tools + UI views) for Portkey Mission Control**, locally, then test them live in
 Claude Desktop over ngrok. A skybridge fork with **real local Durable Object** storage (DO SQL) and a driver
@@ -16,9 +16,9 @@ Render views without an LLM at `http://localhost:3010/` (the DevTools). To use i
 `ngrok http 3010` → add `https://<x>.ngrok-free.app/mcp` as a custom connector (Auth: None).
 
 ## The skill (how Claude builds apps)
-`skill/` is the **`pmc-app-dev`** skill (forked from skybridge's `mcp-app-builder`). Install it in Claude Desktop;
+`skills/mcp-app-dev/` is the **`mcp-app-dev`** skill (forked from skybridge's `mcp-app-builder`). Install it in Claude Desktop;
 it drives the whole loop: scaffold tools+views → run the dev server → ngrok → connect → iterate. Start at
-`skill/SKILL.md`; app-authoring guidance is in `skill/references/`.
+`skills/mcp-app-dev/SKILL.md`; app-authoring guidance is in `skills/mcp-app-dev/references/`.
 
 ## Layout
 ```
@@ -36,7 +36,7 @@ MCP app (tools served directly, per-tool views — no shell wrapping), which is 
 
 ## Storage = DO only
 DO SQL / DO KV only — **no D1, no external DBs** (PMC's model). All data goes through `getStore()` so it runs in
-both dev modes and maps onto a PMC app-host facet. See `skill/references/persistence.md`.
+both dev modes and maps onto a PMC app-host facet. See `skills/mcp-app-dev/references/persistence.md`.
 
 ## Deploy
 `node deploy.mjs --base <your-PMC-url> --slug <app-slug>` splits the build (facet → `modules`, view → `assets`/R2)
