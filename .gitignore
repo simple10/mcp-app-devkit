@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.skybridge/
+.wrangler/
+*.log
+tsconfig.tsbuildinfo
+deploy/
+.vercel/

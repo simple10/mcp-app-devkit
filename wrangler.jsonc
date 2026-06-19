@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pmc-app-devkit",
+  "main": "cf-entry.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "dist/assets" },
+  "define": { "process.env.NODE_ENV": "\"production\"" },
+  "durable_objects": {
+    "bindings": [{ "name": "TASK_DO", "class_name": "TaskDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TaskDO"] }]
+}
