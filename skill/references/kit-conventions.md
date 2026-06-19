@@ -89,9 +89,11 @@ it.** It is NOT an app error.
 To deploy to PMC, the view is bundled to ONE self-contained HTML via an esbuild IIFE (`deploy.mjs`) — there's no
 vite/tailwind pipeline there. So **kit views must style with an inline style object, not tailwind classes or CSS
 imports** (see `src/views/tasks.tsx`'s `styles()` object). Inline styles render identically under `skybridge dev`,
-so this costs nothing locally and keeps the view deployable. To deploy: `node deploy.mjs --base <pmc> --slug <x>`
-(splits the facet → `modules`, the view → `assets`/R2; pushes via `app.builder.deploy`). See `DEPLOY.md` — note the
-facet (`deploy-app/facet.js`, PMC `App extends DurableObject` format) currently mirrors the local app by hand.
+so this costs nothing locally and keeps the view deployable. **To deploy, FIRST ask the user for their PMC URL** —
+it is never hardcoded (usually a remote `https://…`; `localhost` only for local dev) — then
+`node deploy.mjs --base <their-PMC-url> --slug <unique-slug>` (splits the facet → `modules`, the view → `assets`/R2;
+pushes via `app.builder.deploy`; `tasks` is a reserved slug). See `DEPLOY.md` — note the facet
+(`deploy-app/facet.js`, PMC `App extends DurableObject` format) currently mirrors the local app by hand.
 
 ## 9. Discovery mode
 discover.md says to validate the SPEC with the user phase-by-phase. If the app is already decided (the user gave a

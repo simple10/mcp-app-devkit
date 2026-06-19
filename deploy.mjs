@@ -1,13 +1,16 @@
 // PMC deploy — bundle the kit's app into the app-host contract and push it.
 //
-//   node deploy.mjs --base http://localhost:8760 [--slug tasks] [--email .. --password ..]
+//   node deploy.mjs --base <your-PMC-url> --slug <app-slug> [--email .. --password ..]
 //
-// Produces the two halves of the feat/app-host-ui manifest and ships them via `app.builder.deploy`:
+// `<your-PMC-url>` is the USER's PMC front-door URL — ASK them for it. It is NOT hardcoded and has no default:
+// usually a remote https URL (e.g. https://pmc.example.com); `http://localhost:<port>` only for your own local
+// dev. You can also pass it via the `PMC_URL` env var. `<app-slug>` is the app's unique slug (lowercase; not a
+// reserved name like `tasks`).
+//
+// Produces the two halves of the app-host manifest and ships them via `app.builder.deploy`:
 //   modules = { "index.js": <facet> }   → the DurableObject facet (server/tools code; deploy-app/facet.js)
 //   assets  = { "<comp>.html": {...} }  → the view, esbuilt to ONE self-contained HTML, served from R2
 //   tools   = { name: { description, input, required, view? } }
-// Auth + flow mirror services/app-host/examples/app-ui/deploy.py (the reference). Run a PMC stack with the
-// landed app-host-ui (e.g. main / a worktree) first.
 import { build as esbuild } from "esbuild";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -15,8 +18,17 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(process.argv.slice(2).flatMap((a, i, all) => (a.startsWith("--") ? [[a.slice(2), all[i + 1]?.startsWith("--") || all[i + 1] === undefined ? true : all[i + 1]]] : [])));
-const base = String(args.base || process.env.MC_BASE || "http://localhost:8760").replace(/\/$/, "");
-const slug = String(args.slug || "tasks");
+const base = String(args.base || process.env.PMC_URL || "").replace(/\/$/, "");
+const slug = typeof args.slug === "string" ? args.slug : "";
+if (!base || !slug) {
+  console.error(
+    "Usage: node deploy.mjs --base <your-PMC-url> --slug <app-slug> [--email .. --password ..]\n\n" +
+      "  --base   the user's PMC front-door URL — ASK them for it. No default; usually a remote https URL\n" +
+      "           (e.g. https://pmc.example.com), or http://localhost:<port> for local dev. (Or set PMC_URL.)\n" +
+      "  --slug   the app's unique slug — lowercase, not a reserved name like 'tasks'.\n",
+  );
+  process.exit(2);
+}
 
 // ── tiny fetch wrapper with a cookie jar (sign-in sets a session cookie /auth/token needs) ──────────────
 const jar = {};
@@ -114,7 +126,13 @@ async function main() {
   console.log(`   Shell connector: ${conn}`);
   console.log(`   Agent key:       ${key}`);
   console.log(`   Account:         ${email} / ${password}`);
-  console.log(`\n   Claude Desktop: ngrok http ${base.split(":").pop()} → add <ngrok>/${oc}/${wc}/api/v1/apps/mcp (Bearer ${key.slice(0, 12)}…)`);
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:|$|\/)/.test(base);
+  if (isLocal) {
+    console.log(`\n   Claude Desktop (local PMC needs a tunnel): ngrok http ${base.split(":").pop()} → add a custom connector at`);
+    console.log(`   <ngrok-https>/${oc}/${wc}/api/v1/apps/mcp   (Bearer ${key.slice(0, 12)}…)`);
+  } else {
+    console.log(`\n   Claude Desktop: add a custom connector at  ${conn}   (Bearer ${key.slice(0, 12)}…)`);
+  }
 }
 
 main().catch((e) => { console.error("✗", e?.stack || e); process.exit(1); });

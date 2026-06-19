@@ -39,5 +39,6 @@ DO SQL / DO KV only — **no D1, no external DBs** (PMC's model). All data goes 
 both dev modes and maps onto a PMC app-host facet. See `skill/references/persistence.md`.
 
 ## Deploy
-`node deploy.mjs` splits the build (tools code vs view assets) and stages a deploy package; the PMC push lands
-once `feat-app-host-ui` + `feat-oauth-front-door` do. See **DEPLOY.md**.
+`node deploy.mjs --base <your-PMC-url> --slug <app-slug>` splits the build (facet → `modules`, view → `assets`/R2)
+and ships it to PMC via `app.builder.deploy`; the deployed app serves through the shell connector. **The PMC URL is
+never hardcoded — pass `--base` (or `PMC_URL`); ask the user for it.** See **DEPLOY.md**.

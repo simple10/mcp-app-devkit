@@ -17,11 +17,13 @@ The 540KB+ view is static → R2; the facet stays tiny. A view-bearing tool's `v
 `<component>.html` asset.
 
 ## Run it
+**`--base` is the user's PMC URL — there is NO default; ASK the user for it** (usually a remote `https://…`;
+`http://localhost:<port>` only for our own local dev). `--slug` must be unique + not reserved (`tasks` is reserved).
 ```bash
-# against a PMC stack that has the landed app-host-ui (e.g. main on :8700)
-node deploy.mjs --base http://localhost:8700 --slug mytasks   # NB: "tasks" is a reserved slug
-# → prints the shell connector URL + an agent key. For Claude Desktop:
-#   ngrok http 8700  → add <ngrok>/<org>/<ws>/api/v1/apps/mcp  (Bearer <agent key>)
+node deploy.mjs --base <your-PMC-url> --slug <app-slug>     # or set PMC_URL instead of --base
+# → prints the shell connector URL + an agent key. The closing hint adapts:
+#   • remote PMC  → "add a custom connector at <connector-url> (Bearer <key>)"
+#   • local PMC   → "ngrok http <port> → add <ngrok>/<org>/<ws>/api/v1/apps/mcp (Bearer <key>)"
 ```
 It signs up a fresh account (or `--email/--password` to reuse), creates an org, `session.start`s, calls
 `app.builder.deploy`, then mints an agent key. Verified flow: `open_apps` lists the app; `invoke {app, action,
