@@ -10,11 +10,12 @@ shell connector `open_apps`+`invoke`).
 | Bucket | Goes to | What | Source |
 |---|---|---|---|
 | **`modules`** | per-org **DO facet** (runs the tools) | `{ "index.js": <facet> }` — a `DurableObject` named `App` whose async methods ARE the tools `(input, ctx)` → `{content, structuredContent}`, on `ctx.storage.sql`, scoped by `ctx.workspace_id` | `deploy-app/facet.js` |
-| **`assets`** | **R2**, served directly | `{ "<component>.html": {contents, type} }` — the view as ONE self-contained HTML (esbuild IIFE) | `src/views/*.tsx` → `deploy-app/view-entry.tsx` |
+| **`assets`** | **R2**, served directly (PUBLIC) | `{ "<component>.js": {contents} }` — the view as a bare ESM module exporting `mount(el, ctx)` (esbuild ESM; React externalized to the PMC shell via `__PMC_SHARED__`, skybridge hooks fed from `ctx`) → ~5KB | `src/views/*.tsx` → `deploy-app/view-entry.tsx` (+ `skybridge-shim.tsx`) |
 | `tools` | the manifest | `{ name: {description, input, required, view?: {component}} }` | `deploy.mjs` `TOOLS` |
 
-The 540KB+ view is static → R2; the facet stays tiny. A view-bearing tool's `view.component` maps to the
-`<component>.html` asset.
+The ~5KB view module is static → R2 (public); the facet stays tiny. A view-bearing tool's `view.component` maps to
+the `<component>.js` asset. The PMC shell reads the module + blob-imports it sharing ONE React (see PMC
+`docs/MCP-APPS.md`); `skybridge dev` (the local loop) is unaffected — the skybridge→ctx shim is deploy-build only.
 
 ## Run it
 **`--base` is the user's PMC URL — there is NO default; ASK the user for it** (usually a remote `https://…`;
@@ -30,9 +31,9 @@ It signs up a fresh account (or `--email/--password` to reuse), creates an org, 
 ...args}` runs the facet (DO SQL persists) and renders the view.
 
 ## ⚠️ Deployability constraint: views use INLINE STYLES, not tailwind
-The view bundles to ONE self-contained HTML via an esbuild IIFE (no vite/tailwind pipeline there), so kit views
-**must use inline styles** (a style object), not tailwind classes / CSS imports — see `src/views/tasks.tsx`. Inline
-styles render identically under `skybridge dev`, so this costs nothing locally and makes the view deployable.
+The view bundles to a bare ESM module via esbuild (no vite/tailwind pipeline there), so kit views **must use inline
+styles** (a style object), not tailwind classes / CSS imports — see `src/views/tasks.tsx`. Inline styles render
+identically under `skybridge dev`, so this costs nothing locally and makes the view deployable.
 
 ## Known follow-ups
 - **Single-source the facet.** Today `deploy-app/facet.js` mirrors the local skybridge app (`src/server.ts` +

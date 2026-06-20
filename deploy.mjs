@@ -14,9 +14,11 @@
 import { build as esbuild } from "esbuild";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const requireHere = createRequire(import.meta.url);
 const args = Object.fromEntries(process.argv.slice(2).flatMap((a, i, all) => (a.startsWith("--") ? [[a.slice(2), all[i + 1]?.startsWith("--") || all[i + 1] === undefined ? true : all[i + 1]]] : [])));
 const base = String(args.base || process.env.PMC_URL || "").replace(/\/$/, "");
 const slug = typeof args.slug === "string" ? args.slug : "";
@@ -43,25 +45,46 @@ async function call(method, url, { body, token } = {}) {
   return { status: res.status, json };
 }
 
-// ── 1) build the view → ONE self-contained HTML (no tailwind → clean IIFE bundle) ────────────────────────
-async function buildViewHtml() {
-  const reactDir = join(HERE, "node_modules/react");
-  const reactDomDir = join(HERE, "node_modules/react-dom");
+// esbuild plugin: bundle a tiny shim per react-family specifier that re-exports the package's full surface off
+// window.__PMC_SHARED__ (the PMC shell publishes its live React there). So the deployed module ships WITHOUT React
+// (shares the shell's instance) → bare ~KB module, blob-import-compatible under Claude's CSP.
+const SHARED = ["react", "react/jsx-runtime", "react/jsx-dev-runtime", "react-dom", "react-dom/client"];
+const IDENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+const sharedShimPlugin = {
+  name: "pmc-shared-shim",
+  setup(b) {
+    const filter = new RegExp("^(" + SHARED.map((s) => s.replace(/\//g, "\\/")).join("|") + ")$");
+    b.onResolve({ filter }, (a) => ({ path: a.path, namespace: "pmc-shim" }));
+    b.onLoad({ filter: /.*/, namespace: "pmc-shim" }, async (a) => {
+      let names = [];
+      try {
+        names = Object.keys(await import(pathToFileURL(requireHere.resolve(a.path)).href)).filter((k) => k !== "default" && IDENT.test(k)).sort();
+      } catch { /* subpath with no introspectable names → default-only shim */ }
+      const key = JSON.stringify(a.path);
+      const named = names.length ? `export const { ${names.join(", ")} } = __m\n` : "";
+      return {
+        contents: `const __s=globalThis.__PMC_SHARED__\nif(!__s||!__s[${key}])throw new Error('pmc shim: __PMC_SHARED__['+${key}+'] not set')\nconst __m=__s[${key}]\nexport default ('default' in __m?__m.default:__m)\n${named}`,
+        loader: "js",
+      };
+    });
+  },
+};
+
+// ── 1) build the view → a bare ESM MODULE exporting mount(el, ctx) ("B"). React → the shell's __PMC_SHARED__;
+//      skybridge/web → the deploy shim (feeds the view's hooks from ctx). The shell blob-imports this module. ──
+async function buildViewModule() {
   const out = await esbuild({
     entryPoints: [join(HERE, "deploy-app/view-entry.tsx")],
-    bundle: true, format: "iife", platform: "browser", target: "es2022", jsx: "automatic", minify: true, write: false,
+    bundle: true, format: "esm", platform: "browser", target: "es2022", jsx: "automatic", minify: true, write: false,
     nodePaths: [join(HERE, "node_modules")],
-    alias: { react: reactDir, "react-dom": reactDomDir },
+    plugins: [sharedShimPlugin],
+    alias: { "skybridge/web": join(HERE, "deploy-app/skybridge-shim.tsx") },
     define: { "process.env.NODE_ENV": '"production"', "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" },
     logLevel: "warning",
   });
   const js = out.outputFiles.find((f) => f.path.endsWith(".js") || f.path === "<stdout>")?.text ?? "";
-  const css = out.outputFiles.find((f) => f.path.endsWith(".css"))?.text ?? "";
   if (!js) throw new Error("view bundle produced no JS");
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<style>html,body{margin:0;padding:0;background:transparent}${css}</style>
-<script>window.skybridge = { hostType: "mcp-app", serverUrl: "__PMC_ORIGIN__" };</script>
-</head><body><div id="root"></div><script type="module">${js}</script></body></html>`;
+  return js;
 }
 
 // ── the tools manifest (must agree with the facet's method names + the view component) ───────────────────
@@ -73,10 +96,17 @@ const TOOLS = {
 };
 
 async function main() {
-  console.log("→ building the view asset…");
-  const viewHtml = await buildViewHtml();
+  console.log("→ building the view module…");
+  const viewJs = await buildViewModule();
   const facet = readFileSync(join(HERE, "deploy-app/facet.js"), "utf8");
-  console.log(`  view: ${(viewHtml.length / 1024).toFixed(0)}KB · facet: ${(facet.length / 1024).toFixed(1)}KB`);
+  console.log(`  view: ${(viewJs.length / 1024).toFixed(1)}KB (bare ESM module, shared React) · facet: ${(facet.length / 1024).toFixed(1)}KB`);
+  if (args["build-only"]) {
+    const { writeFileSync } = await import("node:fs");
+    const outFile = join(HERE, "deploy-app/view.built.js");
+    writeFileSync(outFile, viewJs);
+    console.log(`✓ --build-only: wrote ${outFile}. Skipping the network deploy.`);
+    process.exit(0);
+  }
 
   // auth (sign-up fresh or sign-in) → identity token
   const stamp = Date.now();
@@ -111,7 +141,7 @@ async function main() {
   console.log("→ session", sid, "→ app.builder.deploy…");
   const dRaw = await call("POST", mcpUrl, { token, body: { jsonrpc: "2.0", id: ++rid, method: "tools/call", params: { name: "app.builder.deploy", session_id: sid, arguments: {
     app: slug, name: "Tasks", summary: "A simple task list with an interactive checklist UI.",
-    modules: { "index.js": facet }, assets: { "tasks.html": { contents: viewHtml, type: "text" } }, tools: TOOLS,
+    modules: { "index.js": facet }, assets: { "tasks.js": { contents: viewJs } }, tools: TOOLS,
   } } } });
   const dRes = dRaw.json?.result ?? dRaw.json;
   const d = dRes?.structuredContent?.result ?? dRes?.structuredContent ?? {};

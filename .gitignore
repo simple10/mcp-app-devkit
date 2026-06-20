@@ -6,3 +6,4 @@ dist/
 tsconfig.tsbuildinfo
 deploy/
 .vercel/
+deploy-app/view.built.js
