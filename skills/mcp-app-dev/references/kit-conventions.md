@@ -86,10 +86,12 @@ The dev server logs `PostHog … ECONNREFUSED / fetch failed` (skybridge telemet
 it.** It is NOT an app error.
 
 ## 8. Deployability: views use INLINE STYLES, not tailwind
-To deploy to PMC, the view is bundled to ONE self-contained HTML via an esbuild IIFE (`deploy.mjs`) — there's no
-vite/tailwind pipeline there. So **kit views must style with an inline style object, not tailwind classes or CSS
-imports** (see `src/views/tasks.tsx`'s `styles()` object). Inline styles render identically under `skybridge dev`,
-so this costs nothing locally and keeps the view deployable. **To deploy, FIRST ask the user for their PMC URL** —
+To deploy to PMC, the view is bundled to a bare **ESM module** exporting `mount(el, ctx)` via esbuild (`deploy.mjs`;
+React externalized to the PMC shell's instance, skybridge hooks fed from `ctx` by a deploy-only shim — the
+component + `skybridge dev` loop are unchanged) — there's no vite/tailwind pipeline there. So **kit views must
+style with an inline style object, not tailwind classes or CSS imports** (see `src/views/tasks.tsx`'s `styles()`
+object). Inline styles render identically under `skybridge dev`, so this costs nothing locally and keeps the view
+deployable (~5KB). **To deploy, FIRST ask the user for their PMC URL** —
 it is never hardcoded (usually a remote `https://…`; `localhost` only for local dev) — then
 `node deploy.mjs --base <their-PMC-url> --slug <unique-slug>` (splits the facet → `modules`, the view → `assets`/R2;
 pushes via `app.builder.deploy`; `tasks` is a reserved slug). See `DEPLOY.md` — note the facet
